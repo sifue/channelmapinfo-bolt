@@ -16,6 +16,18 @@ const UPLOAD_FOLDER = './uploads/';
   }
 })();
 
+/**
+ * チャンネルを表す型
+ */
+type Channel = {
+  id: string;
+  num_members: number;
+  name: string;
+  is_new: boolean;
+  diff_num_members: number;
+  rank: number;
+};
+
 const app = new App({
   logLevel: LogLevel.INFO, // デバッグするときには DEBUG に変更
   socketMode: true,
@@ -28,6 +40,7 @@ app.message(/^!ch-help/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
   await say(
     `\`!ch-report\` 本日のチャンネル人数の日次変化レポートを表示します。\n` +
+      `\`!ch-times-ranking\` timesが含まれるチャンネルのトップ100を表示します。\n` +
       `\`!ch-fetch\` 本日のチャンネル一覧の情報をサーバー上に取得します。すでに取得済みであれば取得しません。\n` +
       `\`!ch-fetrep\` チャンネル情報を取得後、本日のチャンネル人数の日次変化レポートを表示します。`,
   );
@@ -96,6 +109,62 @@ app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }
   const m = message as GenericMessageEvent;
   fetch(m, say);
   report(m, say);
+});
+
+// チャンネル一覧を取得するコマンド
+app.message(/^\!ch-times-ranking/, async ({ message, say }) => {
+  const m = message as GenericMessageEvent;
+  const channels = await loadChannelList(new Date());
+
+  let rankedChannels = channels
+    .filter((c) => c.name.includes('times'))
+    .sort((a, b) => b.num_members - a.num_members)
+    .slice(0, 100)
+    .map((c, i) => {
+      c.rank = i + 1;
+      return c;
+    });
+
+  // 同数と同順位とする
+  let pre_num_members = -1;
+  let pre_rank = -1;
+  for (let c of rankedChannels) {
+    if (c.num_members === pre_num_members) {
+      c.rank = pre_rank;
+    }
+    pre_num_members = c.num_members;
+    pre_rank = c.rank;
+  }
+
+  const fields: any[] = [];
+  const content = {
+    text: '本日のtimesが含まれるチャンネルの参加者人数トップ100を表示します。',
+    attachments: [{ fields: fields, color: '#658CFF' }],
+  };
+
+  fields.push(
+    {
+      title: 'timesランキング',
+      short: true,
+    },
+    {
+      title: 'チャンネル名',
+      short: true,
+    },
+  );
+
+  rankedChannels.forEach((c) => {
+    fields.push({
+      value: `第${c.rank}位 (${c.num_members}人)`,
+      short: true,
+    });
+    fields.push({
+      value: `<#${c.id}>`,
+      short: true,
+    });
+  });
+
+  await say(content);
 });
 
 type FileUploadOption = {
@@ -171,14 +240,6 @@ function createReportMessageWithLink(channels: Channel[]) {
   return msg;
 }
 
-type Channel = {
-  id: string;
-  num_members: number;
-  name: string;
-  is_new: boolean;
-  diff_num_members: number;
-};
-
 /**
  * 前日と今日のチャンネル人数のDiffを作成する
  * @return Promise.<Object[]>
@@ -225,9 +286,9 @@ function createYesterdayDate(today: Date) {
 
 /**
  * 本日のログファイルをローカルファイルをより取得する
- * @return Promise.<Object[]>
+ * @return Promise.<Channel[]>
  */
-async function loadChannelList(date: Date): Promise<Object[]> {
+async function loadChannelList(date: Date): Promise<Channel[]> {
   const filename = CHANNELS_LOG + '/' + getDateString(date) + '.json';
 
   const data = await fs.readFile(filename, 'utf-8');
