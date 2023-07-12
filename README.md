@@ -2,12 +2,12 @@
 
 ## 概要
 
+Slackのワークスペースにおいて
+
 - 毎日のチャンネルの参加者数増減を教えてくれる機能
 - times チャンネルのランキングを教えてくれる機能
 
-以上を提供するBoltで実装されたSlackBotです。
-
-内部的に https://api.slack.com/methods/conversations.list このAPIを使用しています。
+以上を提供するBoltで実装されたSlackBotです。Slackのリマインダーを使った定期実行を前提としています。内部的に https://api.slack.com/methods/conversations.list このAPIを使用しています。
 
 ## コマンド一覧
 
