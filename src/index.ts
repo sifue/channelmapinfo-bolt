@@ -114,7 +114,13 @@ app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }
 // チャンネル一覧を取得するコマンド
 app.message(/^\!ch-times-ranking/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
-  const channels = await loadChannelList(new Date());
+  const today = new Date();
+
+  let channels = await loadChannelList(today);
+  if (channels.length === 0) {
+    // 本日が存在しない場合には昨日のチャンネルリストを取得
+    channels = await loadChannelList(createYesterdayDate(today));
+  }
 
   let rankedChannels = channels
     .filter((c) => c.name.includes('times'))
@@ -286,13 +292,20 @@ function createYesterdayDate(today: Date) {
 
 /**
  * 本日のログファイルをローカルファイルをより取得する
+ * ファイルが存在しない場合は、エラーを出力し、空配列を返す
  * @return Promise.<Channel[]>
  */
 async function loadChannelList(date: Date): Promise<Channel[]> {
   const filename = CHANNELS_LOG + '/' + getDateString(date) + '.json';
 
-  const data = await fs.readFile(filename, 'utf-8');
-  return JSON.parse(data);
+  try {
+    const data = await fs.readFile(filename, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    // ファイルが存在しない場合は、エラーを出力し、空配列を返す
+    console.error(e);
+    return [];
+  }
 }
 
 /**
