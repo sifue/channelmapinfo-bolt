@@ -113,7 +113,7 @@ app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }
 
 // チャンネル一覧を取得するコマンド
 app.message(
-  /^\(リマインダー : )!ch-times-ranking(\.)/,
+  /^\(リマインダー : )*!ch-times-ranking(\.)*/,
   async ({ message, say }) => {
     const m = message as GenericMessageEvent;
     const today = new Date();
