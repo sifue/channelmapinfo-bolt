@@ -112,66 +112,69 @@ app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }
 });
 
 // チャンネル一覧を取得するコマンド
-app.message(/^\!ch-times-ranking/, async ({ message, say }) => {
-  const m = message as GenericMessageEvent;
-  const today = new Date();
+app.message(
+  /^\(リマインダー : )!ch-times-ranking(\.)/,
+  async ({ message, say }) => {
+    const m = message as GenericMessageEvent;
+    const today = new Date();
 
-  let channels = await loadChannelList(today);
-  if (channels.length === 0) {
-    // 本日が存在しない場合には昨日のチャンネルリストを取得
-    channels = await loadChannelList(createYesterdayDate(today));
-  }
-
-  let rankedChannels = channels
-    .filter((c) => c.name.includes('times'))
-    .sort((a, b) => b.num_members - a.num_members)
-    .slice(0, 100)
-    .map((c, i) => {
-      c.rank = i + 1;
-      return c;
-    });
-
-  // 同数と同順位とする
-  let pre_num_members = -1;
-  let pre_rank = -1;
-  for (let c of rankedChannels) {
-    if (c.num_members === pre_num_members) {
-      c.rank = pre_rank;
+    let channels = await loadChannelList(today);
+    if (channels.length === 0) {
+      // 本日が存在しない場合には昨日のチャンネルリストを取得
+      channels = await loadChannelList(createYesterdayDate(today));
     }
-    pre_num_members = c.num_members;
-    pre_rank = c.rank;
-  }
 
-  const fields: any[] = [];
-  const content = {
-    text: '本日のtimesが含まれるチャンネルの参加者人数トップ100を表示します。',
-    attachments: [{ fields: fields, color: '#658CFF' }],
-  };
+    let rankedChannels = channels
+      .filter((c) => c.name.includes('times'))
+      .sort((a, b) => b.num_members - a.num_members)
+      .slice(0, 100)
+      .map((c, i) => {
+        c.rank = i + 1;
+        return c;
+      });
 
-  fields.push(
-    {
-      title: 'timesランキング',
-      short: true,
-    },
-    {
-      title: 'チャンネル名',
-      short: true,
-    },
-  );
+    // 同数と同順位とする
+    let pre_num_members = -1;
+    let pre_rank = -1;
+    for (let c of rankedChannels) {
+      if (c.num_members === pre_num_members) {
+        c.rank = pre_rank;
+      }
+      pre_num_members = c.num_members;
+      pre_rank = c.rank;
+    }
 
-  rankedChannels.forEach((c) => {
-    fields.push({
-      value: `第${c.rank}位 (${c.num_members}人)`,
-      short: true,
+    const fields: any[] = [];
+    const content = {
+      text: '本日のtimesが含まれるチャンネルの参加者人数トップ100を表示します。',
+      attachments: [{ fields: fields, color: '#658CFF' }],
+    };
+
+    fields.push(
+      {
+        title: 'timesランキング',
+        short: true,
+      },
+      {
+        title: 'チャンネル名',
+        short: true,
+      },
+    );
+
+    rankedChannels.forEach((c) => {
+      fields.push({
+        value: `第${c.rank}位 (${c.num_members}人)`,
+        short: true,
+      });
+      fields.push({
+        value: `<#${c.id}>`,
+        short: true,
+      });
     });
-    fields.push({
-      value: `<#${c.id}>`,
-      short: true,
-    });
-  });
 
-  await say(content);
-});
+    await say(content);
+  },
+);
 
 type FileUploadOption = {
   csvFilename: string;
