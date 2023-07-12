@@ -23,7 +23,7 @@ const app = new App({
 app.message(/^!ch-help/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
   await say(
-    `!ch-fetch 現在のチャンネル一覧の情報を所得する。すでに取得済みであれば取得しない。\n`,
+    `!ch-fetch 本日のチャンネル一覧の情報を取得します。すでに取得済みであれば取得しません。\n`,
   );
 });
 
@@ -35,7 +35,7 @@ app.message(/^\!ch-fetch/, async ({ message, say }) => {
   const filename = `${CHANNELS_LOG}/${datestring}.json`;
 
   if (await checkFileExists(filename)) {
-    await say(`すでに本日 {datestring} のチャンネルリストは取得済みです。`);
+    await say(`すでに本日 ${datestring} のチャンネルリストは取得済みです。`);
   } else {
     await say(
       `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得を開始します。`,
