@@ -32,7 +32,7 @@ env SLACK_BOT_TOKEN=xxxxx SLACK_APP_TOKEN=xxxxx node dist/index.js
 基本的にSlackbotのreminderを利用した投稿を前提とする。指定したチャンネルにボットを招待した後、
 
 ```
-/remind #sifue_bot_test “!ch-fetrep” at 6:00am
+/remind #sifue_bot_test “!ch-fetrep” at 00:00am everyday
 ```
 
 以上でSlackbotは、
