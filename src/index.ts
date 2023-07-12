@@ -1,6 +1,6 @@
 import { App, LogLevel, GenericMessageEvent, SayFn } from '@slack/bolt';
-import fs from 'node:fs/promises';
-import * as fsSync from 'node:fs';
+import { promises as fs } from 'fs';
+import * as fsSync from 'fs';
 
 const CHANNELS_LOG = 'channels_log';
 const UPLOAD_FOLDER = './uploads/';
