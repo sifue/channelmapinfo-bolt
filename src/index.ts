@@ -1,5 +1,6 @@
-import { App, LogLevel, GenericMessageEvent } from '@slack/bolt';
+import { App, LogLevel, GenericMessageEvent, SayFn } from '@slack/bolt';
 import fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
 
 const CHANNELS_LOG = 'channels_log';
 const UPLOAD_FOLDER = './uploads/';
@@ -8,6 +9,10 @@ const UPLOAD_FOLDER = './uploads/';
   // チャンネルリストログの保存フォルダ作成
   if (!(await checkFileExists(CHANNELS_LOG))) {
     await fs.mkdir(CHANNELS_LOG);
+  }
+  // アップロード用ファイル保存フォルダ作成
+  if (!(await checkFileExists(UPLOAD_FOLDER))) {
+    await fs.mkdir(UPLOAD_FOLDER);
   }
 })();
 
@@ -22,19 +27,57 @@ const app = new App({
 app.message(/^!ch-help/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
   await say(
-    `!ch-fetch 本日のチャンネル一覧の情報を取得します。すでに取得済みであれば取得しません。\n`,
+    `\`!ch-report\` 本日のチャンネル人数の日次変化レポートを表示します。\n` +
+      `\`!ch-fetch\` 本日のチャンネル一覧の情報をサーバー上に取得します。すでに取得済みであれば取得しません。\n` +
+      `\`!ch-fetrep\` チャンネル情報を取得後、本日のチャンネル人数の日次変化レポートを表示します。`,
   );
 });
+
+// チャンネル人数の日次変化レポートを取得する
+app.message(/^\!ch-report/, async ({ message, say }) => {
+  const m = message as GenericMessageEvent;
+  report(m, say);
+});
+
+async function report(m: GenericMessageEvent, say: SayFn) {
+  const channels = await createNumMembersDiff();
+  // 増減数の降順でソート
+  channels.sort((a, b) => {
+    return b.diff_num_members - a.diff_num_members;
+  });
+
+  if (channels.length <= 100) {
+    // 差分が100個以内ならリンク投稿、そうでないならファイル投稿
+    const msg = createReportMessageWithLink(channels);
+    await say(msg);
+  } else {
+    const fileUploadOption = await createReportMessageAsFile(channels);
+    const option = {
+      title: '本日のチャンネル人数の日次変化レポート',
+      channels: m.channel,
+      file: fsSync.createReadStream(fileUploadOption.csvFilename),
+      filename: fileUploadOption.titlefilename,
+      filetype: 'csv',
+    };
+    // 参考: https://api.slack.com/methods/files.upload
+    await app.client.files.upload(option);
+  }
+}
 
 // チャンネル一覧を取得するコマンド
 app.message(/^\!ch-fetch/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
+  fetch(m, say);
+});
 
+async function fetch(m: GenericMessageEvent, say: SayFn) {
   const datestring = getDateString(new Date());
   const filename = `${CHANNELS_LOG}/${datestring}.json`;
 
   if (await checkFileExists(filename)) {
-    await say(`すでに本日 ${datestring} のチャンネルリストは取得済みです。`);
+    await say(
+      `<@${m.user}>さんの指示をもらいましたが、すでに本日 ${datestring} のチャンネルリストは取得済みです。`,
+    );
   } else {
     await say(
       `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得を開始します。`,
@@ -43,10 +86,153 @@ app.message(/^\!ch-fetch/, async ({ message, say }) => {
     // チャンネルリストログの保存フォルダ作成
     await fs.writeFile(filename, JSON.stringify(channels));
     await say(
-      `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得してファイル保存しました。`,
+      `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得し、ファイル保存しました。`,
     );
   }
+}
+
+// チャンネル一覧を取得後、レポートを送信するコマンド
+app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }) => {
+  const m = message as GenericMessageEvent;
+  fetch(m, say);
+  report(m, say);
 });
+
+type FileUploadOption = {
+  csvFilename: string;
+  titlefilename: string;
+};
+
+/**
+ * レポートをCSVファイル形式で作成する
+ * @param channels
+ * @return 出力したCSVファイルパスの文字列を取得する
+ */
+async function createReportMessageAsFile(
+  channels: Channel[],
+): Promise<FileUploadOption> {
+  let textdata = '前日より変化したチャンネル\t増減 (現在値)';
+
+  channels.forEach((c) => {
+    textdata += '\n';
+    textdata += c.is_new ? `${c.name} (新規)\t` : `${c.name} \t`;
+    textdata +=
+      (c.diff_num_members > 0
+        ? `+${c.diff_num_members}`
+        : `${c.diff_num_members}`) + ` (${c.num_members})`;
+  });
+
+  const titlefilename =
+    getDateString(new Date()) + 'の前日より変化したチャンネル.csv';
+  const csvFilename = UPLOAD_FOLDER + titlefilename;
+  await fs.writeFile(csvFilename, textdata);
+
+  return { csvFilename, titlefilename };
+}
+
+/**
+ * レポートのメッセージをリンク形式で取得する
+ * @param channels
+ * @returns
+ */
+function createReportMessageWithLink(channels: Channel[]) {
+  const fields: any[] = [];
+  const msg = {
+    text: '本日のチャンネル人数の日次変化レポートを表示します。',
+    attachments: [{ fields: fields, color: '#658CFF' }],
+  };
+
+  fields.push(
+    {
+      title: '前日より変化したチャンネル',
+      short: true,
+    },
+    {
+      title: '増減 (現在値)',
+      short: true,
+    },
+  );
+
+  channels.forEach((c) => {
+    fields.push({
+      value: c.is_new ? `<#${c.id}> (新規)` : `<#${c.id}> `,
+      short: true,
+    });
+
+    fields.push({
+      value:
+        (c.diff_num_members > 0
+          ? `+${c.diff_num_members}`
+          : `${c.diff_num_members}`) + ` (${c.num_members})`,
+      short: true,
+    });
+  });
+
+  return msg;
+}
+
+type Channel = {
+  id: string;
+  num_members: number;
+  name: string;
+  is_new: boolean;
+  diff_num_members: number;
+};
+
+/**
+ * 前日と今日のチャンネル人数のDiffを作成する
+ * @return Promise.<Object[]>
+ */
+async function createNumMembersDiff(): Promise<Channel[]> {
+  const today = new Date();
+  const yesterdayChannels = await loadChannelList(createYesterdayDate(today));
+  const yesterdayMap = new Map();
+  yesterdayChannels.forEach((channel) => {
+    const c = channel as Channel;
+    yesterdayMap.set(c.id, c);
+  });
+  const todayChannels = await loadChannelList(today);
+
+  const diffs: Channel[] = [];
+  todayChannels.forEach((channel) => {
+    const c = channel as Channel;
+    if (yesterdayMap.has(c.id)) {
+      const yesterdayChannel = yesterdayMap.get(c.id);
+      // チャンネル人数に差があるチャンネルを属性足して追加
+      if (c.num_members !== yesterdayChannel.num_members) {
+        c.is_new = false;
+        c.diff_num_members = c.num_members - yesterdayChannel.num_members;
+        diffs.push(c);
+      }
+    } else {
+      // 新規チャンネルもdiffに入れる
+      c.is_new = true;
+      c.diff_num_members = c.num_members;
+      diffs.push(c);
+    }
+  });
+  return diffs;
+}
+
+/**
+ * 本日を指定して昨日(24時間前)のDateオブジェクトを取得する
+ * @param today 本日とする日時のDate型
+ */
+function createYesterdayDate(today: Date) {
+  const yesterday = new Date(today.getTime() - 1000 * 60 * 60 * 24);
+  return yesterday;
+}
+
+/**
+ * 本日のログファイルをローカルファイルをより取得する
+ * @return Promise.<Object[]>
+ */
+async function loadChannelList(date: Date): Promise<Object[]> {
+  const filename = CHANNELS_LOG + '/' + getDateString(date) + '.json';
+
+  const data = await fs.readFile(filename, 'utf-8');
+  return JSON.parse(data);
+}
 
 /**
  * ファイルの存在を確認する
@@ -83,7 +269,7 @@ function getDateString(date: Date) {
  * チャンネル一覧をSlackより取得し、cursorを使ったものをまとめて結合する
  * @return Promise.<Object[]>
  */
-async function fetchChannelList() {
+async function fetchChannelList(): Promise<Object[]> {
   let cursor;
   let channels: any[] = [];
 
@@ -111,7 +297,7 @@ async function fetchChannelList() {
     }
   } while (cursor);
 
-  return { channels };
+  return channels;
 }
 
 (async () => {
