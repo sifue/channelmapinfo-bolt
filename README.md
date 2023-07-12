@@ -15,7 +15,7 @@ Node.js v18.13.0 で動作確認。
 ```
 npm install
 npm run build
-env SLACK_BOT_TOKEN=xxxxx SLACK_SIGNING_SECRET=xxxxx node dist/index.js
+env SLACK_BOT_TOKEN=xxxxx SLACK_APP_TOKEN=xxxxx node dist/index.js
 ```
 
 # Slack アプリケーションの作成方法

@@ -15,7 +15,6 @@ const app = new App({
   logLevel: LogLevel.INFO, // デバッグするときには DEBUG に変更
   socketMode: true,
   token: process.env.SLACK_BOT_TOKEN,
-  signingSecret: process.env.SLACK_SIGNING_SECRET,
   appToken: process.env.SLACK_APP_TOKEN,
 });
 
