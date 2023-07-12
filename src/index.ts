@@ -186,15 +186,15 @@ type FileUploadOption = {
 async function createReportMessageAsFile(
   channels: Channel[],
 ): Promise<FileUploadOption> {
-  let textdata = '前日より変化したチャンネル\t増減 (現在値)';
+  let textdata = '"前日より変化したチャンネル","増減 (現在値)"';
 
   channels.forEach((c) => {
     textdata += '\n';
-    textdata += c.is_new ? `${c.name} (新規)\t` : `${c.name} \t`;
+    textdata += c.is_new ? `"${c.name} (新規)",` : `"${c.name} ",`;
     textdata +=
       (c.diff_num_members > 0
-        ? `+${c.diff_num_members}`
-        : `${c.diff_num_members}`) + ` (${c.num_members})`;
+        ? `"+${c.diff_num_members}`
+        : `"${c.diff_num_members}`) + ` (${c.num_members})"`;
   });
 
   const titlefilename =
