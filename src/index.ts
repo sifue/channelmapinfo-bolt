@@ -5,6 +5,8 @@ import * as fsSync from 'fs';
 const CHANNELS_LOG = 'channels_log';
 const UPLOAD_FOLDER = './uploads/';
 
+const IGNORE_TIMES_CHANNELS = process.env.IGNORE_TIMES_CHANNELS != undefined?process.env.IGNORE_TIMES_CHANNELS.split(","):[];
+
 (async () => {
   // チャンネルリストログの保存フォルダ作成
   if (!(await checkFileExists(CHANNELS_LOG))) {
@@ -124,7 +126,7 @@ app.message(
     }
 
     let rankedChannels = channels
-      .filter((c) => c.name.includes('times'))
+      .filter((c) => c.name.includes('times') && !IGNORE_TIMES_CHANNELS.includes(c.id))
       .sort((a, b) => b.num_members - a.num_members)
       .slice(0, 100)
       .map((c, i) => {
