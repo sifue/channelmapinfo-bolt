@@ -27,6 +27,10 @@ npm run build
 env SLACK_BOT_TOKEN=xxxxx SLACK_APP_TOKEN=xxxxx node dist/index.js
 ```
 
+### 設定
+
+環境変数 `IGNORE_TIMES_CHANNELS` にカンマ区切りで、 `CQW34LL20,CS1LT7NHJ` のようにチャンネルIDを指定すると、timesチャンネルのランキングから除外されます。
+
 ## 定期実行のやり方
 
 基本的にSlackbotのreminderを利用した投稿を前提とする。指定したチャンネルにボットを招待した後、
