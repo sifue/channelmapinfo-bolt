@@ -96,7 +96,6 @@ async function fetch(m: GenericMessageEvent, say: SayFn) {
       `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得を開始します。`,
     );
     const channels = await fetchChannelList();
-    // チャンネルリストログの保存フォルダ作成
     await fs.writeFile(filename, JSON.stringify(channels));
     await say(
       `<@${m.user}>さんの指示で、Slackからチャンネルリストを取得し、ファイル保存しました。`,
