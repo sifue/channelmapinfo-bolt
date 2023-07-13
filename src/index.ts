@@ -126,7 +126,7 @@ app.message(
     }
 
     let rankedChannels = channels
-      .filter((c) => c.name.includes('times') && !IGNORE_TIMES_CHANNELS.split(",").includes(c.id))
+      .filter((c) => c.name.includes('times') && !IGNORE_TIMES_CHANNELS.includes(c.id))
       .sort((a, b) => b.num_members - a.num_members)
       .slice(0, 100)
       .map((c, i) => {
