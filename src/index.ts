@@ -51,12 +51,17 @@ app.message(/^!ch-help/, async ({ message, say }) => {
   );
 });
 
-// チャンネル人数の日次変化レポートを取得する
+// チャンネル人数の日次変化レポートを取得するコマンド
 app.message(/^\!ch-report/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
-  report(m, say);
+  await report(m, say);
 });
 
+/**
+ * チャンネル人数の日次変化レポートを取得する
+ * @param m
+ * @param say
+ */
 async function report(m: GenericMessageEvent, say: SayFn) {
   const channels = await createNumMembersDiff();
   // 増減数の降順でソート
@@ -85,9 +90,14 @@ async function report(m: GenericMessageEvent, say: SayFn) {
 // チャンネル一覧を取得するコマンド
 app.message(/^\!ch-fetch/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
-  fetch(m, say);
+  await fetch(m, say);
 });
 
+/**
+ * チャンネル一覧を取得する
+ * @param m
+ * @param say
+ */
 async function fetch(m: GenericMessageEvent, say: SayFn) {
   const datestring = getDateString(new Date());
   const filename = `${CHANNELS_LOG}/${datestring}.json`;
@@ -111,8 +121,8 @@ async function fetch(m: GenericMessageEvent, say: SayFn) {
 // チャンネル一覧を取得後、レポートを送信するコマンド
 app.message(/^(リマインダー : )*\!ch-fetrep(\.)*/, async ({ message, say }) => {
   const m = message as GenericMessageEvent;
-  fetch(m, say);
-  report(m, say);
+  await fetch(m, say);
+  await report(m, say);
 });
 
 // チャンネル一覧を取得するコマンド
