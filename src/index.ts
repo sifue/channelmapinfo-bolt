@@ -5,8 +5,7 @@ import * as fsSync from 'fs';
 const CHANNELS_LOG = 'channels_log';
 const UPLOAD_FOLDER = './uploads/';
 
-// 無視するチャンネルのID
-const IGNORE_TIMES_CHANNELS = ["CBVNRJKGA"];
+const IGNORE_TIMES_CHANNELS = process.env.IGNORE_TIMES_CHANNELS != undefined?process.env.IGNORE_TIMES_CHANNELS.split(","):[];
 
 (async () => {
   // チャンネルリストログの保存フォルダ作成
@@ -127,7 +126,7 @@ app.message(
     }
 
     let rankedChannels = channels
-      .filter((c) => c.name.includes('times') && !IGNORE_TIMES_CHANNELS.includes(c.id))
+      .filter((c) => c.name.includes('times') && !IGNORE_TIMES_CHANNELS.split(",").includes(c.id))
       .sort((a, b) => b.num_members - a.num_members)
       .slice(0, 100)
       .map((c, i) => {
