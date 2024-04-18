@@ -84,7 +84,7 @@ async function report(m: GenericMessageEvent, say: SayFn) {
       filetype: 'csv',
     };
     // 参考: https://api.slack.com/methods/files.upload
-    await app.client.files.upload(option);
+    await app.client.files.uploadV2(option);
   }
 }
 
